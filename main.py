@@ -11,7 +11,7 @@ from sqlalchemy import Integer, String, Text, inspect
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 # Import your forms from the forms.py
-from forms import CreatePostForm, RegisterForm
+from forms import CreatePostForm, RegisterForm, LoginForm
 import os
 
 app = Flask(__name__)
@@ -48,7 +48,7 @@ class BlogPost(db.Model):
 
 
 # TODO: Create a User table for all your registered users. 
-class User(db.model):
+class User(db.Model):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True)
     name: Mapped[str] = mapped_column(String(250), nullable=False)
     email: Mapped[str] = mapped_column(String(250), unique=True, nullable=False)
@@ -63,11 +63,23 @@ with app.app_context():
         print("Database already exists.")
 
 
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
 # TODO: Use Werkzeug to hash the user's password when creating a new user.
 @app.route('/register', methods=["GET", "POST"])
 def register():
     register_form = RegisterForm()
     if register_form.validate_on_submit():
+        result = db.session.execute(db.select(User).where(User.email == register_form.email.data))
+        # Note, email in db is unique so will only have one result.
+        user = result.scalar()
+        if user:
+            # User already exists
+            flash("You've already signed up with that email, log in instead!", "warning")
+            return redirect(url_for('login'))
         new_user = User(
             name=register_form.name.data,
             email=register_form.email.data,
@@ -76,7 +88,7 @@ def register():
         db.session.add(new_user)
         try:
             db.session.commit()
-            # login_user(new_user)
+            return redirect(url_for("login"))
         except IntegrityError as e:
             print(f"Error: {str(e)}")
             db.session.rollback()
@@ -86,9 +98,50 @@ def register():
 
 
 # TODO: Retrieve a user from the database based on their email. 
-@app.route('/login')
+@app.route('/login', methods=["GET", "POST"])
 def login():
-    return render_template("login.html")
+    login_form = LoginForm()
+    if login_form.validate_on_submit():
+        email = login_form.email.data
+        password = login_form.password.data
+        user = User.query.filter_by(email=email).first()
+        if user and check_password_hash(user.password, password):
+            login_user(user)
+            # TODO: Fix this bug when logging in:
+            """
+            Traceback (most recent call last):
+  File "/Users/anthony/Flask_blog/lib/python3.12/site-packages/flask/app.py", line 2213, in __call__
+    return self.wsgi_app(environ, start_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anthony/Flask_blog/lib/python3.12/site-packages/flask/app.py", line 2193, in wsgi_app
+    response = self.handle_exception(e)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anthony/Flask_blog/lib/python3.12/site-packages/flask/app.py", line 2190, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anthony/Flask_blog/lib/python3.12/site-packages/flask/app.py", line 1486, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anthony/Flask_blog/lib/python3.12/site-packages/flask/app.py", line 1484, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anthony/Flask_blog/lib/python3.12/site-packages/flask/app.py", line 1469, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anthony/PycharmProjects/projects/Flask_blog/main.py", line 109, in login
+    login_user(user)
+  File "/Users/anthony/Flask_blog/lib/python3.12/site-packages/flask_login/utils.py", line 180, in login_user
+    if not force and not user.is_active:
+                         ^^^^^^^^^^^^^^^
+                         """
+            return redirect(url_for('get_all_posts'))
+        elif not user:
+            flash("This email doesn't exist. Please try again.", "error")
+            return redirect('login')
+        elif not check_password_hash(user.password, password):
+            flash("Wrong password. Please try again.", "error")
+            return redirect('login')
+    return render_template("login.html", form=login_form)
 
 
 @app.route('/logout')
@@ -105,7 +158,6 @@ def get_all_posts():
 
 # TODO: Allow logged-in users to comment on posts
 @app.route("/post/<int:post_id>")
-@login_required
 def show_post(post_id):
     requested_post = db.get_or_404(BlogPost, post_id)
     return render_template("post.html", post=requested_post)
@@ -171,16 +223,20 @@ def contact():
     return render_template("contact.html")
 
 
-# Create a database inspector object
-inspector = inspect(db.engine)
+def print_table_names():
+    with app.app_context():
+        # Create a database inspector object
+        inspector = inspect(db.engine)
 
-# Get the list of table names
-table_names = inspector.get_table_names()
+        # Get the list of table names
+        table_names = inspector.get_table_names()
 
-# Print the table names
-print("Tables in the database:")
-for table_name in table_names:
-    print(f"- {table_name}")
+        # Print the table names
+        print("Tables in the database:")
+        for table_name in table_names:
+            print(f"- {table_name}")
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5002)
+    print_table_names()

@@ -1,6 +1,7 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, PasswordField
-from wtforms.validators import DataRequired, URL, Email
+from wtforms.validators import DataRequired, URL
+from email_validator import validate_email, EmailNotValidError
 from flask_ckeditor import CKEditorField
 
 
@@ -10,17 +11,33 @@ class CreatePostForm(FlaskForm):
     subtitle = StringField("Subtitle", validators=[DataRequired()])
     img_url = StringField("Blog Image URL", validators=[DataRequired(), URL()])
     body = CKEditorField("Blog Content", validators=[DataRequired()])
-    submit = SubmitField("Submit Post")
+    submit = SubmitField("SUBMIT POST")
 
 
 # TODO: Create a RegisterForm to register new users
 class RegisterForm(FlaskForm):
     name = StringField("Username", validators=[DataRequired()])
-    email = StringField("Email", validators=[DataRequired(), Email()])
+    email = StringField("Email", validators=[DataRequired()])
     password = PasswordField("Password", validators=[DataRequired()])
-    submit = SubmitField("Register")
+    submit = SubmitField("REGISTER")
+
+    def val_email(self, email):
+        try:
+            validate_email(email.data)
+        except EmailNotValidError as e:
+            raise ValueError(str(e))
+
 
 # TODO: Create a LoginForm to login existing users
+class LoginForm(FlaskForm):
+    email = StringField("Email", validators=[DataRequired()])
+    password = PasswordField("Password", validators=[DataRequired()])
+    submit = SubmitField("LET ME IN!")
 
+    def val_email(self, email):
+        try:
+            validate_email(email.data)
+        except EmailNotValidError as e:
+            raise ValueError(str(e))
 
 # TODO: Create a CommentForm so users can leave comments below posts
