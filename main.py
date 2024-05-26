@@ -48,7 +48,7 @@ class BlogPost(db.Model):
 
 
 # TODO: Create a User table for all your registered users. 
-class User(db.Model):
+class User(UserMixin, db.Model):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True)
     name: Mapped[str] = mapped_column(String(250), nullable=False)
     email: Mapped[str] = mapped_column(String(250), unique=True, nullable=False)
@@ -107,33 +107,6 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
             login_user(user)
-            # TODO: Fix this bug when logging in:
-            """
-            Traceback (most recent call last):
-  File "/Users/anthony/Flask_blog/lib/python3.12/site-packages/flask/app.py", line 2213, in __call__
-    return self.wsgi_app(environ, start_response)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/anthony/Flask_blog/lib/python3.12/site-packages/flask/app.py", line 2193, in wsgi_app
-    response = self.handle_exception(e)
-               ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/anthony/Flask_blog/lib/python3.12/site-packages/flask/app.py", line 2190, in wsgi_app
-    response = self.full_dispatch_request()
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/anthony/Flask_blog/lib/python3.12/site-packages/flask/app.py", line 1486, in full_dispatch_request
-    rv = self.handle_user_exception(e)
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/anthony/Flask_blog/lib/python3.12/site-packages/flask/app.py", line 1484, in full_dispatch_request
-    rv = self.dispatch_request()
-         ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/anthony/Flask_blog/lib/python3.12/site-packages/flask/app.py", line 1469, in dispatch_request
-    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/anthony/PycharmProjects/projects/Flask_blog/main.py", line 109, in login
-    login_user(user)
-  File "/Users/anthony/Flask_blog/lib/python3.12/site-packages/flask_login/utils.py", line 180, in login_user
-    if not force and not user.is_active:
-                         ^^^^^^^^^^^^^^^
-                         """
             return redirect(url_for('get_all_posts'))
         elif not user:
             flash("This email doesn't exist. Please try again.", "error")
@@ -238,5 +211,6 @@ def print_table_names():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5002)
     print_table_names()
+    app.run(debug=True, port=5002)
+
