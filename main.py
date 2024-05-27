@@ -6,7 +6,7 @@ from flask_gravatar import Gravatar
 from flask_login import UserMixin, login_user, LoginManager, current_user, logout_user, login_required
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column, Session
 from sqlalchemy import Integer, String, Text, inspect
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -48,7 +48,8 @@ class BlogPost(db.Model):
 
 
 # TODO: Create a User table for all your registered users. 
-class User(UserMixin, db.Model):
+class User(UserMixin, db.Model, Base):
+    __tablename__ = "users"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True)
     name: Mapped[str] = mapped_column(String(250), nullable=False)
     email: Mapped[str] = mapped_column(String(250), unique=True, nullable=False)
@@ -65,7 +66,11 @@ with app.app_context():
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    with app.app_context():
+        session = Session(db.engine)
+        user = session.get(User, user_id)
+        session.close()
+        return user
 
 
 # TODO: Use Werkzeug to hash the user's password when creating a new user.
