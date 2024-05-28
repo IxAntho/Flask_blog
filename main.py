@@ -48,8 +48,7 @@ class BlogPost(db.Model):
 
 
 # TODO: Create a User table for all your registered users. 
-class User(UserMixin, db.Model, Base):
-    __tablename__ = "users"
+class User(UserMixin, db.Model):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True)
     name: Mapped[str] = mapped_column(String(250), nullable=False)
     email: Mapped[str] = mapped_column(String(250), unique=True, nullable=False)
@@ -93,7 +92,8 @@ def register():
         db.session.add(new_user)
         try:
             db.session.commit()
-            return redirect(url_for("login"))
+            login_user(new_user)
+            return redirect(url_for("get_all_posts"))
         except IntegrityError as e:
             print(f"Error: {str(e)}")
             db.session.rollback()
@@ -124,6 +124,7 @@ def login():
 
 @app.route('/logout')
 def logout():
+    logout_user()
     return redirect(url_for('get_all_posts'))
 
 
@@ -131,14 +132,20 @@ def logout():
 def get_all_posts():
     result = db.session.execute(db.select(BlogPost))
     posts = result.scalars().all()
-    return render_template("index.html", all_posts=posts)
+    print(current_user)
+    if current_user:
+        if current_user.id == 1:
+            is_admin = True
+        else:
+            is_admin = False
+    return render_template("index.html", all_posts=posts, logged_in=current_user.is_active, is_admin=is_admin)
 
 
 # TODO: Allow logged-in users to comment on posts
 @app.route("/post/<int:post_id>")
 def show_post(post_id):
     requested_post = db.get_or_404(BlogPost, post_id)
-    return render_template("post.html", post=requested_post)
+    return render_template("post.html", post=requested_post, logged_in=current_user.is_active)
 
 
 # TODO: Use a decorator so only an admin user can create a new post
@@ -157,7 +164,7 @@ def add_new_post():
         db.session.add(new_post)
         db.session.commit()
         return redirect(url_for("get_all_posts"))
-    return render_template("make-post.html", form=form)
+    return render_template("make-post.html", form=form, logged_in=current_user.is_active)
 
 
 # TODO: Use a decorator so only an admin user can edit a post
@@ -179,7 +186,7 @@ def edit_post(post_id):
         post.body = edit_form.body.data
         db.session.commit()
         return redirect(url_for("show_post", post_id=post.id))
-    return render_template("make-post.html", form=edit_form, is_edit=True)
+    return render_template("make-post.html", form=edit_form, is_edit=True, logged_in=current_user.is_active)
 
 
 # TODO: Use a decorator so only an admin user can delete a post
