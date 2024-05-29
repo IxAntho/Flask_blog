@@ -7,7 +7,8 @@ from flask_login import UserMixin, login_user, LoginManager, current_user, logou
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column, Session
-from sqlalchemy import Integer, String, Text, inspect
+from sqlalchemy import Integer, String, Text, inspect, ForeignKey
+from typing import List
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 # Import your forms from the forms.py
@@ -36,8 +37,20 @@ db.init_app(app)
 
 
 # CONFIGURE TABLES
-class BlogPost(db.Model):
+# TODO: Create a User table for all your registered users.
+class User(UserMixin, db.Model, Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True)
+    name: Mapped[str] = mapped_column(String(250), nullable=False)
+    email: Mapped[str] = mapped_column(String(250), unique=True, nullable=False)
+    password: Mapped[str] = mapped_column(String(350), unique=True, nullable=False)
+    posts: Mapped[List["BlogPost"]] = relationship(back_populates="user")
+
+
+class BlogPost(db.Model, Base):
     __tablename__ = "blog_posts"
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(250), unique=True, nullable=False)
     subtitle: Mapped[str] = mapped_column(String(250), nullable=False)
@@ -45,14 +58,8 @@ class BlogPost(db.Model):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     author: Mapped[str] = mapped_column(String(250), nullable=False)
     img_url: Mapped[str] = mapped_column(String(250), nullable=False)
-
-
-# TODO: Create a User table for all your registered users. 
-class User(UserMixin, db.Model):
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True)
-    name: Mapped[str] = mapped_column(String(250), nullable=False)
-    email: Mapped[str] = mapped_column(String(250), unique=True, nullable=False)
-    password: Mapped[str] = mapped_column(String(350), unique=True, nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user: Mapped["User"] = relationship(back_populates="blogposts")
 
 
 with app.app_context():
