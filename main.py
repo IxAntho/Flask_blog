@@ -38,28 +38,32 @@ db.init_app(app)
 
 # CONFIGURE TABLES
 # TODO: Create a User table for all your registered users.
-class User(UserMixin, db.Model, Base):
+class User(UserMixin, db.Model):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True)
     name: Mapped[str] = mapped_column(String(250), nullable=False)
     email: Mapped[str] = mapped_column(String(250), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String(350), unique=True, nullable=False)
-    posts: Mapped[List["BlogPost"]] = relationship(back_populates="user")
+    # This will act like a List of BlogPost objects attached to each User.
+    # The "author" refers to the author property in the BlogPost class.
+    posts: Mapped[List["BlogPost"]] = relationship(back_populates="author")
 
 
-class BlogPost(db.Model, Base):
+class BlogPost(db.Model):
     __tablename__ = "blog_posts"
+
+    # Create Foreign Key, "users.id" the users refers to the tablename of User.
+    author_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    # Create reference to the User object. The "posts" refers to the posts property in the User class.
+    author: Mapped["User"] = relationship(back_populates="posts")
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(250), unique=True, nullable=False)
     subtitle: Mapped[str] = mapped_column(String(250), nullable=False)
     date: Mapped[str] = mapped_column(String(250), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
-    author: Mapped[str] = mapped_column(String(250), nullable=False)
     img_url: Mapped[str] = mapped_column(String(250), nullable=False)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    user: Mapped["User"] = relationship(back_populates="blogposts")
 
 
 with app.app_context():
@@ -147,6 +151,7 @@ def logout():
 
 @app.route('/')
 def get_all_posts():
+    is_admin = True
     result = db.session.execute(db.select(BlogPost))
     posts = result.scalars().all()
     print(current_user)
