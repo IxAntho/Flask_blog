@@ -151,15 +151,12 @@ def logout():
 
 @app.route('/')
 def get_all_posts():
-    is_admin = True
+    is_admin = False
     result = db.session.execute(db.select(BlogPost))
     posts = result.scalars().all()
-    print(current_user)
-    if current_user:
+    if current_user.is_authenticated:
         if current_user.id == 1:
             is_admin = True
-        else:
-            is_admin = False
     return render_template("index.html", all_posts=posts, logged_in=current_user.is_active, is_admin=is_admin)
 
 
