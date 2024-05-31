@@ -40,4 +40,8 @@ class LoginForm(FlaskForm):
         except EmailNotValidError as e:
             raise ValueError(str(e))
 
+
 # TODO: Create a CommentForm so users can leave comments below posts
+class CommentForm(FlaskForm):
+    body = CKEditorField("Comment Content", validators=[DataRequired()])
+    submit = SubmitField("COMMENT!")
