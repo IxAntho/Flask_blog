@@ -19,6 +19,14 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
 ckeditor = CKEditor(app)
 Bootstrap5(app)
+gravatar = Gravatar(app,
+                    size=100,
+                    rating='g',
+                    default='retro',
+                    force_default=False,
+                    force_lower=False,
+                    use_ssl=False,
+                    base_url=None)
 
 # TODO: Configure Flask-Login
 login_manager = LoginManager()
@@ -177,14 +185,22 @@ def get_all_posts():
 def show_post(post_id):
     requested_post = db.get_or_404(BlogPost, post_id)
     comment_form = CommentForm()
+    result = db.session.execute(db.select(Comment))
+    comments = result.scalars().all()
     if comment_form.validate_on_submit():
+        if not current_user.is_active:
+            flash("Please log in or register to comment a post.", "warning")
+            return redirect(url_for("login"))
         new_comment = Comment(
-            body=comment_form.body.data
+            body=comment_form.body.data,
+            author=current_user,
+            post=requested_post
         )
         db.session.add(new_comment)
         db.session.commit()
-        return redirect(url_for(f"show_post({post_id})"))
-    return render_template("post.html", post=requested_post, logged_in=current_user.is_active)
+        return redirect(url_for("show_post", post_id=requested_post.id))
+    return render_template("post.html", post=requested_post, logged_in=current_user.is_active, form=comment_form,
+                           comments=comments)
 
 
 # TODO: Use a decorator so only an admin user can create a new post
@@ -242,12 +258,12 @@ def delete_post(post_id):
 
 @app.route("/about")
 def about():
-    return render_template("about.html")
+    return render_template("about.html", logged_in=current_user.is_active)
 
 
 @app.route("/contact")
 def contact():
-    return render_template("contact.html")
+    return render_template("contact.html", logged_in=current_user.is_active)
 
 
 def print_table_names():
