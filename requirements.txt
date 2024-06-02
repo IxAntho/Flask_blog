@@ -1,0 +1,8 @@
+flask
+flask-bootstrap
+flask-ckeditor
+flask-gravatar
+flask-login
+flask-sqlalchemy
+email-validator
+werkzeug
